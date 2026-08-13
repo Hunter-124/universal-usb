@@ -13,9 +13,9 @@ cmake -S "${ROOT}/firmware" -B "${BUILD_DIR}" \
   -DBOARD=stm32f103_bluepill \
   -DCMAKE_BUILD_TYPE="${BUILD_TYPE}"
 cmake --build "${BUILD_DIR}" --target \
-  uusb-hid-msc uusb-microphone uusb-webcam
+  uusb-hid-msc uusb-microphone uusb-webcam uusb-security-token
 
-for profile in uusb-hid-msc uusb-microphone uusb-webcam; do
+for profile in uusb-hid-msc uusb-microphone uusb-webcam uusb-security-token; do
   for extension in elf bin hex map; do
     artifact="${BUILD_DIR}/${profile}.${extension}"
     if [[ ! -s "${artifact}" ]]; then
