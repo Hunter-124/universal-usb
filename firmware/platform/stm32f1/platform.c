@@ -193,7 +193,11 @@ bool uusb_platform_pa11_pa12_restore_usb_mode(void *context)
 bool uusb_platform_tinyusb_init(void *context)
 {
     (void)context;
-    return (clock_state == UUSB_CLOCK_VALID) && tud_init(0U);
+    tusb_rhport_init_t const rhport = {
+        .role = TUSB_ROLE_DEVICE,
+        .speed = TUSB_SPEED_FULL,
+    };
+    return (clock_state == UUSB_CLOCK_VALID) && tusb_init(0U, &rhport);
 }
 
 void USB_LP_CAN1_RX0_IRQHandler(void)
