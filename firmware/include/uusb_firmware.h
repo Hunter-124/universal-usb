@@ -1,15 +1,12 @@
 #ifndef UUSB_FIRMWARE_H
 #define UUSB_FIRMWARE_H
 
-#include <stdint.h>
-
-typedef enum {
-    UUSB_PROFILE_HID_MSC = 1,
-    UUSB_PROFILE_MICROPHONE = 2,
-    UUSB_PROFILE_WEBCAM = 3,
-    UUSB_PROFILE_SECURITY_TOKEN = 4
-} uusb_profile_t;
+#include "uusb_mailbox.h"
 
 int uusb_firmware_run(uusb_profile_t profile);
+int uusb_firmware_run_with_hooks(
+    uusb_profile_t profile,
+    const uusb_mailbox_hooks_t *hooks,
+    void *hook_context);
 
 #endif

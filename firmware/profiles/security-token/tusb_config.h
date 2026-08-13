@@ -8,10 +8,10 @@
 #define CFG_TUD_ENDPOINT0_SIZE 64
 #define CFG_TUSB_MEM_ALIGN __attribute__((aligned(4)))
 
-/* Phase-2 bootstrap enumerates EP0 only. Security interfaces arrive later. */
+#define CFG_TUD_HID 2
+#define CFG_TUD_HID_EP_BUFSIZE 64
 #define CFG_TUD_CDC 0
 #define CFG_TUD_MSC 0
-#define CFG_TUD_HID 0
 #define CFG_TUD_MIDI 0
 #define CFG_TUD_AUDIO 0
 #define CFG_TUD_VIDEO 0

@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "profile": "hid-msc",
+  "name": "Prepared installer boot-menu navigation",
+  "description": "Attach a caller-supplied prepared raw installer image read-only and demonstrate bounded boot-menu keyboard primitives. This does not reboot the target or claim a completed installation.",
+  "steps": [
+    {
+      "action": "msc.attach",
+      "image": "/replace/with/your/prepared-installer.img",
+      "read_write": false
+    },
+    {
+      "action": "mark",
+      "label": "Operator independently starts or reboots the target into its firmware boot window"
+    },
+    {
+      "action": "wait",
+      "milliseconds": 1000
+    },
+    {
+      "action": "hid.key.tap",
+      "keys": ["f12"],
+      "hold_ms": 80
+    },
+    {
+      "action": "wait",
+      "milliseconds": 1500
+    },
+    {
+      "action": "hid.key.tap",
+      "keys": ["down"],
+      "hold_ms": 60
+    },
+    {
+      "action": "hid.key.tap",
+      "keys": ["enter"],
+      "hold_ms": 80
+    },
+    {
+      "action": "mark",
+      "label": "Operator verifies only boot-manager detection and initial boot-file reads"
+    }
+  ]
+}

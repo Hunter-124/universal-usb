@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "universal-usb-controller"
+version = "0.1.0"
+description = "Controller and daemon for the Universal USB test device"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+uusb = "uusb.cli:main"
+uusbd = "uusb.daemon:main"
+
+[tool.setuptools]
+packages = ["uusb"]

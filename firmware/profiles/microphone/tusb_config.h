@@ -8,13 +8,25 @@
 #define CFG_TUD_ENDPOINT0_SIZE 64
 #define CFG_TUSB_MEM_ALIGN __attribute__((aligned(4)))
 
-/* Phase-2 bootstrap enumerates EP0 only. Project-owned UAC1 arrives in phase 5. */
+/* One full-speed UAC1 mono capture function, 48 samples per USB frame. */
 #define CFG_TUD_CDC 0
 #define CFG_TUD_MSC 0
 #define CFG_TUD_HID 0
 #define CFG_TUD_MIDI 0
-#define CFG_TUD_AUDIO 0
+#define CFG_TUD_AUDIO 1
 #define CFG_TUD_VIDEO 0
 #define CFG_TUD_VENDOR 0
+
+#define CFG_TUD_AUDIO_CTRL_BUF_SZ 64
+#define CFG_TUD_AUDIO_ENABLE_EP_IN 1
+#define CFG_TUD_AUDIO_ENABLE_EP_OUT 0
+#define CFG_TUD_AUDIO_ENABLE_FEEDBACK_EP 0
+#define CFG_TUD_AUDIO_ENABLE_INTERRUPT_EP 0
+#define CFG_TUD_AUDIO_EP_IN_FLOW_CONTROL 0
+#define CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE 48000
+#define CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX 1
+#define CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX 2
+#define CFG_TUD_AUDIO_FUNC_1_EP_IN_SZ_MAX 96
+#define CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ 192
 
 #endif

@@ -16,7 +16,7 @@ diff --git a/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c b/src/portable/st/stm
 index d357d5696..fb9f32dba 100644
 --- a/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
 +++ b/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
-@@ -191,8 +191,12 @@ bool dcd_init(uint8_t rhport, const tusb_rhport_init_t *rh_init) {
+@@ -191,8 +191,11 @@ bool dcd_init(uint8_t rhport, const tusb_rhport_init_t *rh_init) {
    #endif
  
    // Enable interrupts for device mode
@@ -30,7 +30,7 @@ index d357d5696..fb9f32dba 100644
  
    handle_bus_reset(rhport);
  
-@@ -407,8 +411,10 @@ void dcd_int_handler(uint8_t rhport) {
+@@ -407,8 +410,10 @@ void dcd_int_handler(uint8_t rhport) {
    }
  
    if (int_status & U_ISTR_WKUP) {
@@ -41,7 +41,7 @@ index d357d5696..fb9f32dba 100644
  
      FSDEV_REG->ISTR = (fsdev_bus_t)~U_ISTR_WKUP;
      dcd_event_bus_signal(0, DCD_EVENT_RESUME, true);
-@@ -419,10 +425,12 @@ void dcd_int_handler(uint8_t rhport) {
+@@ -419,10 +424,12 @@ void dcd_int_handler(uint8_t rhport) {
       * these events cannot be differentiated, so we only trigger suspend. */
  
      /* Force low-power mode in the macrocell */
@@ -55,5 +55,47 @@ index d357d5696..fb9f32dba 100644
      FSDEV_REG->ISTR = (fsdev_bus_t)~U_ISTR_SUSP;
      dcd_event_bus_signal(0, DCD_EVENT_SUSPEND, true);
    }
+diff --git a/src/class/msc/msc_device.c b/src/class/msc/msc_device.c
+index 58f5fb48e..19ed823d8 100644
+--- a/src/class/msc/msc_device.c
++++ b/src/class/msc/msc_device.c
+@@ -241,6 +241,9 @@ TU_ATTR_WEAK void tud_msc_scsi_complete_cb(uint8_t lun, uint8_t const scsi_cmd[1
+   (void) scsi_cmd;
+ }
+ 
++TU_ATTR_WEAK void tud_msc_bot_reset_cb(void) {
++}
++
+ TU_ATTR_WEAK uint8_t tud_msc_get_maxlun_cb(void) {
+   return 1;
+ }
+@@ -392,4 +395,5 @@ static void proc_bot_reset(mscd_interface_t* p_msc) {
+   p_msc->stage       = MSC_STAGE_CMD;
++  p_msc->pending_io  = false;
+   p_msc->total_len   = 0;
+   p_msc->xferred_len = 0;
+   p_msc->sense_key           = 0;
+@@ -448,6 +452,7 @@ bool mscd_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t
+     case MSC_REQ_RESET:
+       TU_LOG_DRV("  MSC BOT Reset\r\n");
+       TU_VERIFY(request->wValue == 0 && request->wLength == 0);
++      tud_msc_bot_reset_cb();
+       proc_bot_reset(p_msc); // driver state reset
+       tud_control_status(rhport, request);
+     break;
+diff --git a/src/class/msc/msc_device.h b/src/class/msc/msc_device.h
+index 658baaafa..28f5dc87f 100644
+--- a/src/class/msc/msc_device.h
++++ b/src/class/msc/msc_device.h
+@@ -126,6 +126,9 @@ int32_t tud_msc_scsi_cb (uint8_t lun, uint8_t const scsi_cmd[16], void* buffer,
+ 
+ /*------------- Optional callbacks -------------*/
+ 
++// Invoked when the host requests Bulk-Only Transport reset.
++void tud_msc_bot_reset_cb(void);
++
+ // Invoked when received GET_MAX_LUN request, required for multiple LUNs implementation
+ uint8_t tud_msc_get_maxlun_cb(void);
+ 
 -- 
 2.51.0

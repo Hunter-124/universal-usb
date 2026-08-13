@@ -1,0 +1,71 @@
+name: software-ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  firmware-controller:
+    name: Four firmware profiles and host/native tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out recursively
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Select Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+
+      - name: Verify pinned pristine TinyUSB and patch
+        run: python3 tools/verify-tinyusb.py
+
+      - name: Configure four-profile 64 KiB firmware build
+        run: |
+          cmake -S firmware -B build/firmware -G Ninja \
+            -DBOARD=stm32f103_bluepill \
+            -DCMAKE_BUILD_TYPE=MinSizeRel
+
+      - name: Build all firmware profiles
+        run: cmake --build build/firmware
+
+      - name: Require every firmware artifact
+        run: |
+          test -s build/firmware/uusb-hid-msc.elf
+          test -s build/firmware/uusb-hid-msc.bin
+          test -s build/firmware/uusb-microphone.elf
+          test -s build/firmware/uusb-microphone.bin
+          test -s build/firmware/uusb-webcam.elf
+          test -s build/firmware/uusb-webcam.bin
+          test -s build/firmware/uusb-security-token.elf
+          test -s build/firmware/uusb-security-token.bin
+
+      - name: Run native C helpers
+        run: ctest --test-dir build/firmware --output-on-failure
+
+      - name: Run descriptor and PMA golden tests
+        run: python3 -m unittest discover -s controller/tests -p "test_*descriptors.py"
+
+      - name: Run controller tests
+        run: python3 -m unittest discover -s controller/tests
+
+      - name: Prove the TinyUSB gitlink stayed pristine
+        run: python3 tools/verify-tinyusb.py
+
+      # This workflow proves software builds, fixed layouts, descriptors, and
+      # host/native behavior only. It does not test physical USB, SWD/ST-Link,
+      # re-enumeration, target OS interoperability, or DMA hardware.

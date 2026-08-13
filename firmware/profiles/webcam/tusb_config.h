@@ -8,13 +8,15 @@
 #define CFG_TUD_ENDPOINT0_SIZE 64
 #define CFG_TUSB_MEM_ALIGN __attribute__((aligned(4)))
 
-/* Phase-2 bootstrap enumerates EP0 only. UVC streaming arrives in phase 5. */
 #define CFG_TUD_CDC 0
 #define CFG_TUD_MSC 0
 #define CFG_TUD_HID 0
 #define CFG_TUD_MIDI 0
 #define CFG_TUD_AUDIO 0
-#define CFG_TUD_VIDEO 0
+#define CFG_TUD_VIDEO 1
+#define CFG_TUD_VIDEO_STREAMING 1
+#define CFG_TUD_VIDEO_STREAMING_EP_BUFSIZE 256
+#define CFG_TUD_VIDEO_STREAMING_BULK 0
 #define CFG_TUD_VENDOR 0
 
 #endif

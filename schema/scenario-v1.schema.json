@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://universal-usb.invalid/schema/scenario-v1.schema.json",
+  "title": "Universal USB scenario version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "profile", "steps"],
+  "properties": {
+    "version": {"const": 1},
+    "profile": {
+      "enum": ["hid-msc", "microphone", "webcam", "security-token"]
+    },
+    "name": {"type": "string", "minLength": 1, "maxLength": 128},
+    "description": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": {"$ref": "#/$defs/step"}
+    }
+  },
+  "$defs": {
+    "key": {
+      "type": "string",
+      "enum": [
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+        "a", "application", "apostrophe", "b", "backslash", "backspace", "c",
+        "caps-lock", "comma", "d", "delete", "down", "e", "end", "enter",
+        "equal", "escape", "f", "f1", "f10", "f11", "f12", "f2", "f3", "f4",
+        "f5", "f6", "f7", "f8", "f9", "g", "grave", "h", "home", "i", "insert",
+        "j", "k", "keypad-0", "keypad-1", "keypad-2", "keypad-3", "keypad-4",
+        "keypad-5", "keypad-6", "keypad-7", "keypad-8", "keypad-9",
+        "keypad-divide", "keypad-enter", "keypad-equal", "keypad-minus",
+        "keypad-multiply", "keypad-period", "keypad-plus", "l", "left", "left-alt",
+        "left-bracket", "left-control", "left-meta", "left-shift", "m", "minus", "n",
+        "num-lock", "o", "p", "page-down", "page-up", "pause", "period", "power",
+        "print-screen", "q", "r", "right", "right-alt", "right-bracket",
+        "right-control", "right-meta", "right-shift", "s", "scroll-lock", "semicolon",
+        "slash", "space", "t", "tab", "u", "up", "v", "w", "x", "y", "z"
+      ]
+    },
+    "keys": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/key"}
+    },
+    "step": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "milliseconds"],
+          "properties": {
+            "action": {"const": "wait"},
+            "milliseconds": {"type": "integer", "minimum": 0, "maximum": 600000}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "label"],
+          "properties": {
+            "action": {"const": "mark"},
+            "label": {"type": "string", "minLength": 1, "maxLength": 128}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "keys"],
+          "properties": {
+            "action": {"const": "hid.key.tap"},
+            "keys": {"$ref": "#/$defs/keys"},
+            "hold_ms": {"type": "integer", "minimum": 10, "maximum": 5000}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "keys"],
+          "properties": {
+            "action": {"const": "hid.key.down"},
+            "keys": {"$ref": "#/$defs/keys"},
+            "hold_ms": {"type": "integer", "minimum": 10, "maximum": 5000}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "keys"],
+          "properties": {
+            "action": {"const": "hid.key.up"},
+            "keys": {"$ref": "#/$defs/keys"},
+            "hold_ms": {"type": "integer", "minimum": 10, "maximum": 5000}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "text"],
+          "properties": {
+            "action": {"const": "hid.text"},
+            "text": {"type": "string", "minLength": 1, "maxLength": 4096},
+            "interval_ms": {"type": "integer", "minimum": 0, "maximum": 5000}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "dx", "dy"],
+          "properties": {
+            "action": {"const": "hid.mouse.move"},
+            "dx": {"type": "integer", "minimum": -1000000, "maximum": 1000000},
+            "dy": {"type": "integer", "minimum": -1000000, "maximum": 1000000}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "button"],
+          "properties": {
+            "action": {"const": "hid.mouse.button.down"},
+            "button": {"enum": ["left", "right", "middle"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "button"],
+          "properties": {
+            "action": {"const": "hid.mouse.button.up"},
+            "button": {"enum": ["left", "right", "middle"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "button"],
+          "properties": {
+            "action": {"const": "hid.mouse.button.click"},
+            "button": {"enum": ["left", "right", "middle"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "amount"],
+          "properties": {
+            "action": {"const": "hid.mouse.scroll"},
+            "amount": {"type": "integer", "minimum": -1000000, "maximum": 1000000}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "control"],
+          "properties": {
+            "action": {"const": "hid.consumer.tap"},
+            "control": {"enum": ["volume-up", "volume-down", "mute", "play-pause", "next", "previous", "stop"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "control"],
+          "properties": {
+            "action": {"const": "hid.consumer.down"},
+            "control": {"enum": ["volume-up", "volume-down", "mute", "play-pause", "next", "previous", "stop"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "control"],
+          "properties": {
+            "action": {"const": "hid.consumer.up"},
+            "control": {"enum": ["volume-up", "volume-down", "mute", "play-pause", "next", "previous", "stop"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "image"],
+          "properties": {
+            "action": {"const": "msc.attach"},
+            "image": {"type": "string", "minLength": 1, "maxLength": 4096},
+            "read_write": {"type": "boolean"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action"],
+          "properties": {"action": {"const": "msc.detach"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "frequency_hz"],
+          "properties": {
+            "action": {"const": "mic.tone"},
+            "frequency_hz": {"type": "integer", "minimum": 20, "maximum": 20000},
+            "level_dbfs": {"type": "number", "minimum": -96, "maximum": 0}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action"],
+          "properties": {"action": {"const": "mic.silence"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "pattern"],
+          "properties": {
+            "action": {"const": "cam.pattern"},
+            "pattern": {"enum": ["bars", "checker", "gradient"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action"],
+          "properties": {"action": {"const": "token.touch"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "name"],
+          "properties": {
+            "action": {"const": "token.otp.select"},
+            "name": {"type": "string", "minLength": 1, "maxLength": 128}
+          }
+        }
+      ]
+    }
+  }
+}

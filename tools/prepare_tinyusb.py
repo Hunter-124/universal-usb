@@ -61,7 +61,7 @@ def export_source(source: Path, destination: Path) -> None:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     ).stdout
-    destination.mkdir(parents=True)
+    destination.mkdir(parents=True, exist_ok=True)
     with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as tar:
         for member in tar.getmembers():
             member_path = Path(member.name)

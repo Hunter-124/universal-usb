@@ -21,7 +21,7 @@ execute_process(
           --destination "${UUSB_TINYUSB_BUILD_COPY}"
           --patch "${UUSB_TINYUSB_PATCH}"
   RESULT_VARIABLE UUSB_TINYUSB_PREPARE_RESULT
-  COMMAND_ERROR_VARIABLE UUSB_TINYUSB_PREPARE_ERROR
+  ERROR_VARIABLE UUSB_TINYUSB_PREPARE_ERROR
 )
 if(NOT UUSB_TINYUSB_PREPARE_RESULT EQUAL 0)
   message(FATAL_ERROR "TinyUSB build-copy preparation failed:\n${UUSB_TINYUSB_PREPARE_ERROR}")
@@ -39,6 +39,7 @@ set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/arm-none-eabi-gcc.cmak
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/arm-none-eabi-gcc.cmake")
 
 project(universal_usb_firmware VERSION 0.1.0 LANGUAGES C)
+include(CTest)
 
 if(NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
   message(FATAL_ERROR "Firmware requires GNU Arm Embedded GCC")
@@ -68,8 +69,11 @@ target_compile_options(uusb_stm32f1_hal PRIVATE
 
 set(UUSB_SHARED_SOURCES
   common/descriptor_strings.c
+  common/hid.c
+  common/crc32c.c
   common/firmware.c
   common/status.c
+  common/mailbox.c
   common/watchdog.c
   platform/stm32f1/platform.c
   platform/stm32f1/startup.c
@@ -81,6 +85,12 @@ function(uusb_add_profile target profile_directory profile_id)
     ${UUSB_SHARED_SOURCES}
     "profiles/${profile_directory}/main.c"
     "profiles/${profile_directory}/usb_descriptors.c"
+  )
+  set_source_files_properties(
+    ${UUSB_SHARED_SOURCES}
+    "profiles/${profile_directory}/main.c"
+    "profiles/${profile_directory}/usb_descriptors.c"
+    PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra;-Werror"
   )
   set_target_properties(${target} PROPERTIES
     C_STANDARD 17
@@ -104,7 +114,6 @@ function(uusb_add_profile target profile_directory profile_id)
     UUSB_FIRMWARE_PROFILE=${profile_id}
   )
   target_compile_options(${target} PRIVATE
-    -Wall -Wextra -Werror
     -ffunction-sections -fdata-sections -fno-common
   )
   target_link_libraries(${target} PRIVATE uusb_stm32f1_hal)
@@ -113,6 +122,13 @@ function(uusb_add_profile target profile_directory profile_id)
   target_sources(${target} PRIVATE
     "${UUSB_TINYUSB_BUILD_COPY}/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c"
     "${UUSB_TINYUSB_BUILD_COPY}/src/portable/st/stm32_fsdev/fsdev_common.c"
+  )
+  # TinyUSB's F1 packet-memory helper uses the GNU `asm` spelling. Keep
+  # project-owned sources strict C17 while compiling that pinned upstream file
+  # as GNU C17.
+  set_source_files_properties(
+    "${UUSB_TINYUSB_BUILD_COPY}/src/portable/st/stm32_fsdev/fsdev_common.c"
+    PROPERTIES COMPILE_OPTIONS "-std=gnu17"
   )
 
   target_link_options(${target} PRIVATE
@@ -137,6 +153,58 @@ function(uusb_add_profile target profile_directory profile_id)
 endfunction()
 
 uusb_add_profile(uusb-hid-msc hid-msc 1)
+target_sources(uusb-hid-msc PRIVATE common/msc.c)
+set_source_files_properties(common/msc.c PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra;-Werror")
+
 uusb_add_profile(uusb-microphone microphone 2)
+target_sources(uusb-microphone PRIVATE common/tone.c)
+set_source_files_properties(common/tone.c PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra;-Werror")
+
 uusb_add_profile(uusb-webcam webcam 3)
+target_sources(uusb-webcam PRIVATE common/uvc_pattern.c)
+set_source_files_properties(common/uvc_pattern.c PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra;-Werror")
+
 uusb_add_profile(uusb-security-token security-token 4)
+target_sources(uusb-security-token PRIVATE common/token_usb.c)
+set_source_files_properties(common/token_usb.c PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra;-Werror")
+
+if(BUILD_TESTING)
+  find_program(UUSB_HOST_CC NAMES cc gcc clang REQUIRED)
+
+  function(uusb_add_native_test name)
+    add_test(
+      NAME "native-${name}"
+      COMMAND "${UUSB_PYTHON}" "${UUSB_ROOT}/tools/run-native-c-test.py"
+              --compiler "${UUSB_HOST_CC}"
+              --include "${CMAKE_CURRENT_LIST_DIR}/include"
+              --include "${CMAKE_CURRENT_LIST_DIR}/platform/stm32f1"
+              --include "${CMAKE_CURRENT_LIST_DIR}/tests"
+              ${ARGN}
+    )
+  endfunction()
+
+  uusb_add_native_test(crc-mailbox
+    "${CMAKE_CURRENT_LIST_DIR}/tests/test_mailbox.c"
+    "${CMAKE_CURRENT_LIST_DIR}/common/mailbox.c"
+    "${CMAKE_CURRENT_LIST_DIR}/common/crc32c.c")
+  uusb_add_native_test(hid-state
+    "${CMAKE_CURRENT_LIST_DIR}/tests/test_hid.c"
+    "${CMAKE_CURRENT_LIST_DIR}/common/hid.c")
+  uusb_add_native_test(usb-lifecycle
+    "${CMAKE_CURRENT_LIST_DIR}/tests/test_usb_lifecycle.c"
+    "${CMAKE_CURRENT_LIST_DIR}/platform/stm32f1/usb_lifecycle.c")
+  uusb_add_native_test(msc-state
+    "${CMAKE_CURRENT_LIST_DIR}/tests/test_msc.c"
+    "${CMAKE_CURRENT_LIST_DIR}/common/msc.c"
+    "${CMAKE_CURRENT_LIST_DIR}/common/mailbox.c"
+    "${CMAKE_CURRENT_LIST_DIR}/common/crc32c.c")
+  uusb_add_native_test(tone
+    "${CMAKE_CURRENT_LIST_DIR}/tests/test_tone.c"
+    "${CMAKE_CURRENT_LIST_DIR}/common/tone.c")
+  uusb_add_native_test(uvc-pattern
+    "${CMAKE_CURRENT_LIST_DIR}/tests/test_uvc_pattern.c"
+    "${CMAKE_CURRENT_LIST_DIR}/common/uvc_pattern.c")
+  uusb_add_native_test(token-usb
+    "${CMAKE_CURRENT_LIST_DIR}/tests/test_token_usb.c"
+    "${CMAKE_CURRENT_LIST_DIR}/common/token_usb.c")
+endif()

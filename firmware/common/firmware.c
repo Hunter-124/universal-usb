@@ -10,6 +10,12 @@
 #include "watchdog.h"
 
 static uusb_usb_lifecycle_t usb_lifecycle;
+TU_ATTR_WEAK void uusb_profile_task(void) {}
+TU_ATTR_WEAK void uusb_profile_mount(void) {}
+TU_ATTR_WEAK void uusb_profile_umount(void) {}
+TU_ATTR_WEAK void uusb_profile_suspend(void) {}
+TU_ATTR_WEAK void uusb_profile_resume(void) {}
+
 
 static void idle_forever(void)
 {
@@ -20,7 +26,21 @@ static void idle_forever(void)
 
 int uusb_firmware_run(uusb_profile_t profile)
 {
+    return uusb_firmware_run_with_hooks(profile, NULL, NULL);
+}
+
+int uusb_firmware_run_with_hooks(
+    uusb_profile_t profile,
+    const uusb_mailbox_hooks_t *mailbox_hooks,
+    void *mailbox_context)
+{
     uusb_clock_state_t const clock = uusb_platform_clock_state();
+    uusb_mailbox_boot(
+        profile,
+        UUSB_FIRMWARE_VERSION(0, 1, 0),
+        clock == UUSB_CLOCK_VALID,
+        mailbox_hooks,
+        mailbox_context);
     uusb_status_initialize(profile, clock);
     if (clock != UUSB_CLOCK_VALID) {
         (void)uusb_platform_usb_peripheral_disable(NULL);
@@ -44,6 +64,11 @@ int uusb_firmware_run(uusb_profile_t profile)
         uusb_status_set_runtime(UUSB_STATUS_USB_START_FAILED);
         idle_forever();
     }
+    if (SysTick_Config(SystemCoreClock / UINT32_C(1000)) != 0U) {
+        (void)uusb_platform_usb_peripheral_disable(NULL);
+        uusb_status_set_runtime(UUSB_STATUS_USB_START_FAILED);
+        idle_forever();
+    }
 
     bool const watchdog_enabled = uusb_watchdog_start();
     uusb_status_set_watchdog(watchdog_enabled);
@@ -51,31 +76,47 @@ int uusb_firmware_run(uusb_profile_t profile)
 
     for (;;) {
         tud_task();
+        uusb_mailbox_poll();
+        uusb_profile_task();
         if (watchdog_enabled) {
             uusb_watchdog_feed();
         }
     }
 }
 
+void SysTick_Handler(void)
+{
+    uusb_mailbox_tick_1ms();
+}
+
 void tud_mount_cb(void)
 {
     uusb_status_set_mounted(true);
     uusb_status_set_suspended(false);
+    uusb_mailbox_set_mounted(true);
+    uusb_mailbox_set_suspended(false);
+    uusb_profile_mount();
 }
 
 void tud_umount_cb(void)
 {
     uusb_status_set_mounted(false);
     uusb_status_set_suspended(false);
+    uusb_mailbox_usb_unmounted();
+    uusb_profile_umount();
 }
 
 void tud_suspend_cb(bool remote_wakeup_en)
 {
     (void)remote_wakeup_en;
     uusb_status_set_suspended(true);
+    uusb_mailbox_set_suspended(true);
+    uusb_profile_suspend();
 }
 
 void tud_resume_cb(void)
 {
     uusb_status_set_suspended(false);
+    uusb_mailbox_set_suspended(false);
+    uusb_profile_resume();
 }
