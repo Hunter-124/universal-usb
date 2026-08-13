@@ -1,0 +1,59 @@
+From 7ce8520ad77cf43db89a3ca8a08b57a2e60ab94b Mon Sep 17 00:00:00 2001
+From: Universal USB contributors <Hunter-124@users.noreply.github.com>
+Date: Thu, 13 Aug 2026 00:00:00 +0000
+Subject: [PATCH] stm32 fsdev: leave F1 suspend power bits untouched
+
+The STM32F1 USB device peripheral must keep its suspend and wakeup interrupt
+masks disabled in this project.  In particular, do not write FSUSP or LPMODE
+on F1; the controller cannot safely enter and leave those states through the
+generic fsdev path used here.  Other fsdev-backed MCUs retain TinyUSB's normal
+behavior.
+---
+ src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c b/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
+index d357d5696..fb9f32dba 100644
+--- a/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
++++ b/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
+@@ -191,8 +191,12 @@ bool dcd_init(uint8_t rhport, const tusb_rhport_init_t *rh_init) {
+   #endif
+ 
+   // Enable interrupts for device mode
+-  FSDEV_REG->CNTR |=
+-    U_CNTR_RESETM | U_CNTR_ESOFM | U_CNTR_CTRM | U_CNTR_SUSPM | U_CNTR_WKUPM | U_CNTR_PMAOVRM;
++  FSDEV_REG->CNTR |= U_CNTR_RESETM | U_CNTR_ESOFM | U_CNTR_CTRM | U_CNTR_PMAOVRM;
++
++  #if CFG_TUSB_MCU != OPT_MCU_STM32F1
++  FSDEV_REG->CNTR |= U_CNTR_SUSPM | U_CNTR_WKUPM;
++  #endif
+ 
+   handle_bus_reset(rhport);
+ 
+@@ -407,8 +411,10 @@ void dcd_int_handler(uint8_t rhport) {
+   }
+ 
+   if (int_status & U_ISTR_WKUP) {
++    #if CFG_TUSB_MCU != OPT_MCU_STM32F1
+     FSDEV_REG->CNTR &= ~U_CNTR_LPMODE;
+     FSDEV_REG->CNTR &= ~U_CNTR_FSUSP;
++    #endif
+ 
+     FSDEV_REG->ISTR = (fsdev_bus_t)~U_ISTR_WKUP;
+     dcd_event_bus_signal(0, DCD_EVENT_RESUME, true);
+@@ -419,10 +425,12 @@ void dcd_int_handler(uint8_t rhport) {
+      * these events cannot be differentiated, so we only trigger suspend. */
+ 
+     /* Force low-power mode in the macrocell */
++    #if CFG_TUSB_MCU != OPT_MCU_STM32F1
+     FSDEV_REG->CNTR |= U_CNTR_FSUSP;
+     FSDEV_REG->CNTR |= U_CNTR_LPMODE;
++    #endif
+ 
+-    /* clear of the ISTR bit must be done after setting of CNTR_FSUSP */
++    /* Clear the suspend status after any required macrocell transition. */
+     FSDEV_REG->ISTR = (fsdev_bus_t)~U_ISTR_SUSP;
+     dcd_event_bus_signal(0, DCD_EVENT_SUSPEND, true);
+   }
+-- 
+2.51.0
