@@ -22,11 +22,11 @@ The verified software baseline builds four firmware images and passes 111 contro
 | FAT12 image builder and MSC backing | Deterministic tool and media-state tests | Read-only image mounted/read; explicit read-write attach persisted a target-created file; 1,474,560-byte sequential read took 88.6992 s; forced daemon loss caused target `EIO` after 135,168 bytes | 16.6 kB/s and 30.8 ms/sector average on this run only; physical ST-Link unplug remains open |
 | UAC1 tone/silence | Descriptor and tone-helper tests | Five-second mono S16_LE/48 kHz recording measured 1000.00 Hz, peak 8191; silence maximum was 0 | Synthetic source; no sensor claim |
 | UVC patterns | Descriptor and pattern-helper tests | Coherent 128×96 frames captured; bars/checker/gradient each streamed for 120 seconds without ffmpeg transfer errors | Synthetic patterns; no camera claim |
-| FIDO/CCID/OTP | Framing, CTAP2, CCID/APDU, RFC vectors, state/durability tests | Direct FIDO HID getInfo/makeCredential/getAssertion with verified ES256 signature; raw CCID power/SELECT/CHUID; HOTP counter advanced after accepted transfer | Browser/libfido2 and automatic pcscd/OpenSC discovery remain open; no security/certification claim |
+| FIDO/CCID/OTP | Framing, CTAP2, CCID/APDU, RFC vectors, state/durability tests | libfido2/python-fido2 registration/assertion; pcscd/OpenSC reader and PIV SELECT; raw CCID CHUID; six captured OTP press/release pairs with durable counter | No browser UI, certification, production security, or full PIV VERIFY/GENERAL AUTHENTICATE claim |
 | Controlled D+ disconnect/profile verification | Lifecycle and profile-state tests | Ten consecutive profile switches verified fresh mounted transitions and expected profiles | One Blue Pill board only |
 | Two-PC topology | Architecture review | Not exercised; development HIL used one Fedora machine for both roles | Final separated HIL gate remains open |
 
-No USB electrical measurements, long-run audio statistics, browser transaction, automatic PC/SC discovery, Windows-install result, or two-PC result is claimed. The MSC number above is one measured run, not a performance promise.
+No USB electrical measurements, long-run audio statistics, browser-UI transaction, Windows-install result, or two-PC result is claimed. The MSC number above is one measured run, not a performance promise.
 
 ## Preparation
 
@@ -234,6 +234,7 @@ Target FIDO discovery:
 
 ```bash
 fido2-token -L
+fido2-token -I /dev/hidrawN
 ```
 
 Start a disposable browser or standards-client registration/assertion operation, then deliberately issue synthetic presence from the controller:
@@ -243,10 +244,11 @@ Start a disposable browser or standards-client registration/assertion operation,
 .venv/bin/uusb token credential list
 ```
 
-Target CCID/PIV-like discovery:
+Target CCID/PIV-like discovery uses an explicit private-test registration. The installer idempotently appends only `1209:0010` to the installed libccid metadata; rerun it after libccid package upgrades:
 
 ```bash
-systemctl --user status pcscd.service || true
+sudo tools/install-ccid-test-reader.sh
+sudo systemctl restart pcscd.socket pcscd.service
 opensc-tool --list-readers
 opensc-tool --reader 0 --atr
 ```
@@ -268,7 +270,7 @@ Expected HIL gate:
 4. TOTP/HOTP vectors match RFC 6236/4226 tests. On target hardware, OTP types only after touch, always releases keys, and commits HOTP only after an accepted transfer.
 5. Controller loss, timeout, stale sequence, and bad CRC become failures rather than fabricated FIDO/CCID success.
 
-Observed subset: generic descriptors enumerated; direct FIDO HID completed getInfo, makeCredential, and getAssertion with an OpenSSL-verified ES256 signature; raw CCID completed power-on, PIV SELECT, and CHUID GET DATA; a test HOTP counter advanced only after accepted transfer. Browser/libfido2, automatic pcscd/OpenSC discovery, full PIV subset, and captured OTP keystrokes remain open.
+Observed: generic descriptors enumerated; libfido2 listed the token and decoded GetInfo; independent python-fido2 completed `none`-attestation registration and parsed an assertion, with direct ES256 signature verification. After explicit private-ID registration, pcscd/OpenSC found the T=1 reader and PIV SELECT returned `9000`; raw CCID also completed CHUID GET DATA. Target input captured six OTP press/release pairs, and the RFC 4226 counter advanced only after accepted transfer. Full browser UI, PIV VERIFY/GENERAL AUTHENTICATE through OpenSC, and certification remain outside this evidence.
 
 ## Prepared installer navigation scenario
 

@@ -33,7 +33,7 @@ All four personalities are mutually exclusive firmware images. VID `1209` and PI
 | `hid-msc` | Boot keyboard, boot-capable relative mouse, consumer HID, one BOT MSC LUN | `1209:000d` | Stateful HID; regular raw image served over SWD | Fedora captured keyboard modifier, relative mouse, and consumer-control events. Read-only FAT12 mounted/read; an explicit read-write attach persisted a target-created file. |
 | `microphone` | UAC1 capture, mono S16_LE, 48 kHz | `1209:000e` | Generated silence or phase-continuous tone; no sensor/input stream | Fedora ALSA recorded five seconds at 48 kHz: the analyzer found 1000.00 Hz with peak 8191; silence had maximum absolute sample 0. |
 | `webcam` | UVC 1.5, YUY2 128×96 at 10 fps | `1209:000f` | Procedural bars/checker/gradient; no sensor, upload, or frame buffer | Fedora V4L2 captured coherent moving frames; 120-second ffmpeg streams of all three patterns completed without malformed-transfer errors. |
-| `security-token` | FIDO HID, CCID T=1 slot, OTP boot keyboard | `1209:0010` | Controller-backed FIDO/PIV-like state and test OTP | Direct FIDO HID getInfo/registration/assertion and signature verification passed; raw CCID power/SELECT/CHUID passed; HOTP advanced only after accepted transfer. libfido2/browser and automatic PC/SC discovery remain open. |
+| `security-token` | FIDO HID, CCID T=1 slot, OTP boot keyboard | `1209:0010` | Controller-backed FIDO/PIV-like state and test OTP | libfido2/python-fido2 registration/assertion passed; pcscd/OpenSC found the explicitly registered private reader and completed PIV SELECT; captured HOTP reports advanced only after acceptance. |
 
 The USB 3.x wires are unused; the F103 has only a 12 Mbit/s USB 2.0 full-speed peripheral. Host-backed MSC crosses SWD and is intentionally slow. On this one same-machine HIL run, a sequential 1,474,560-byte read took 88.6992 seconds: 16.6 kB/s, averaging 30.8 ms per 512-byte sector. This is a measurement, not a throughput promise.
 
@@ -204,9 +204,14 @@ Only the command matching the active profile should find a device. **Expected ta
 ```bash
 .venv/bin/uusb profile set security-token --yes
 .venv/bin/uusb token status
-# In a disposable WebAuthn registration/assertion flow, issue synthetic presence:
+fido2-token -L
+fido2-token -I /dev/hidrawN
+# In a disposable standards-client registration/assertion flow, issue presence:
 .venv/bin/uusb token touch
-# Inspect the synthetic smart-card slot on the target:
+# Register the private test VID/PID with the installed libccid package metadata.
+# Rerun after a libccid package upgrade, then restart pcscd.
+sudo tools/install-ccid-test-reader.sh
+sudo systemctl restart pcscd.socket pcscd.service
 opensc-tool --list-readers
 # Provisioning prompts for a Base32 test secret; no default secret is shipped.
 .venv/bin/uusb token otp provision demo --type totp --digits 6 --period 30
@@ -214,7 +219,7 @@ opensc-tool --list-readers
 .venv/bin/uusb token touch
 ```
 
-**Observed subset:** direct FIDO HID completed getInfo, test registration, test assertion, and ES256 signature verification; raw CCID completed power-on, PIV SELECT, and CHUID GET DATA; a test HOTP counter advanced only after accepted transfer. Browser/libfido2, automatic PC/SC/OpenSC discovery, full PIV APDUs, and captured OTP keystrokes remain expected target gates. Use only disposable relying parties, PINs, and secrets; this is not production authentication.
+**Observed:** libfido2 identified the token and decoded GetInfo; independent python-fido2 completed `none`-attestation registration and parsed an assertion, while direct verification confirmed its ES256 signature. After the explicit private-ID libccid registration, pcscd/OpenSC found one T=1 reader and PIV SELECT returned `9000`. Raw CCID also completed CHUID GET DATA. Target input captured six OTP press/release pairs, and the RFC 4226 counter advanced only after accepted transfer. Use only disposable relying parties, PINs, and secrets; this is not production authentication.
 
 The installer navigation example is described in [the showcase guide](docs/showcase.md) and checked in as [`examples/windows-installer.json`](examples/windows-installer.json). It requires a user-supplied, legally prepared raw image; the repository includes no Microsoft media, keys, or unattended-install claim.
 
@@ -236,7 +241,7 @@ The mailbox is reserved at `0x20000000` and is never zeroed by normal startup. M
 | USB packet-memory budgets | Compile-time assertions and descriptor tests | Static accounting plus successful enumeration; not a USB electrical trace |
 | HID/MSC throughput | Keyboard, mouse, and consumer events captured; read-only and explicit read-write FAT12 workflows passed | One sequential 1.44 MiB read measured 16.6 kB/s and 30.8 ms/sector average; forced daemon loss during a read produced target `EIO` after 135,168 bytes, never false success; physical ST-Link unplug remains open |
 | Microphone/webcam stability | Five-second UAC1 tone/silence recordings and three 120-second UVC streams | Synthetic data only; no sensor-ingestion claim |
-| Security-token interoperability | Direct FIDO HID registration/assertion, raw CCID PIV-like APDUs, and HOTP accepted-transfer state | No certification or production security; browser/libfido2 and automatic PC/SC client gates remain open |
+| Security-token interoperability | libfido2/python-fido2 registration/assertion, pcscd/OpenSC reader/PIV SELECT, raw CCID CHUID, and captured HOTP transfer | No browser-UI, certification, production-security, or full PIV VERIFY/GENERAL AUTHENTICATE claim |
 | Two-PC topology | Designed and documented | Current hardware evidence used the same Fedora machine for ST-Link control and target-facing USB |
 
 ## Troubleshooting
