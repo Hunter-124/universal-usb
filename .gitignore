@@ -1,0 +1,17 @@
+# Generated build trees
+/build/
+/cmake-build-*/
+
+# Python tooling caches
+__pycache__/
+*.py[cod]
+/.venv/
+
+# Editor and operating-system state
+/.idea/
+/.vscode/
+*~
+.DS_Store
+
+# Controller runtime state belongs outside the source tree
+/run/
