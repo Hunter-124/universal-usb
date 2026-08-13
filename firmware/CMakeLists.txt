@@ -104,7 +104,7 @@ function(uusb_add_profile target profile_directory profile_id)
     UUSB_FIRMWARE_PROFILE=${profile_id}
   )
   target_compile_options(${target} PRIVATE
-    -Wall -Wextra -Werror -Wpedantic
+    -Wall -Wextra -Werror
     -ffunction-sections -fdata-sections -fno-common
   )
   target_link_libraries(${target} PRIVATE uusb_stm32f1_hal)
