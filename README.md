@@ -30,12 +30,12 @@ All four personalities are mutually exclusive firmware images. VID `1209` and PI
 
 | Profile | Target-facing interfaces | Test identity | Backing/generation | Verification status |
 |---|---|---|---|---|
-| `hid-msc` | Boot keyboard, boot-capable relative mouse, consumer HID, one BOT MSC LUN | `1209:000d` | Stateful HID; regular raw image served over SWD | Software tests only; target enumeration and I/O not yet hardware-verified |
-| `microphone` | UAC1 capture, mono S16_LE, 48 kHz | `1209:000e` | Generated silence or phase-continuous tone; no sensor/input stream | Software tests only; ALSA capture not yet hardware-verified |
-| `webcam` | UVC 1.5, YUY2 128×96 at 10 fps | `1209:000f` | Procedural bars/checker/gradient; no sensor, upload, or frame buffer | Software tests only; V4L2 streaming not yet hardware-verified |
-| `security-token` | FIDO HID, CCID T=1 slot, OTP boot keyboard | `1209:0010` | Controller-backed FIDO/PIV-like state and test OTP | Software tests only; libfido2, PC/SC, and target enumeration not yet hardware-verified |
+| `hid-msc` | Boot keyboard, boot-capable relative mouse, consumer HID, one BOT MSC LUN | `1209:000d` | Stateful HID; regular raw image served over SWD | Fedora captured keyboard modifier, relative mouse, and consumer-control events. Read-only FAT12 mounted/read; an explicit read-write attach persisted a target-created file. |
+| `microphone` | UAC1 capture, mono S16_LE, 48 kHz | `1209:000e` | Generated silence or phase-continuous tone; no sensor/input stream | Fedora ALSA recorded five seconds at 48 kHz: the analyzer found 1000.00 Hz with peak 8191; silence had maximum absolute sample 0. |
+| `webcam` | UVC 1.5, YUY2 128×96 at 10 fps | `1209:000f` | Procedural bars/checker/gradient; no sensor, upload, or frame buffer | Fedora V4L2 captured coherent moving frames; 120-second ffmpeg streams of all three patterns completed without malformed-transfer errors. |
+| `security-token` | FIDO HID, CCID T=1 slot, OTP boot keyboard | `1209:0010` | Controller-backed FIDO/PIV-like state and test OTP | Direct FIDO HID getInfo/registration/assertion and signature verification passed; raw CCID power/SELECT/CHUID passed; HOTP advanced only after accepted transfer. libfido2/browser and automatic PC/SC discovery remain open. |
 
-The USB 3.x wires are unused; the F103 has only a 12 Mbit/s USB 2.0 full-speed peripheral. Host-backed MSC crosses SWD and is intentionally slow; no sector latency or throughput has been measured on hardware yet.
+The USB 3.x wires are unused; the F103 has only a 12 Mbit/s USB 2.0 full-speed peripheral. Host-backed MSC crosses SWD and is intentionally slow. On this one same-machine HIL run, a sequential 1,474,560-byte read took 88.6992 seconds: 16.6 kB/s, averaging 30.8 ms per 512-byte sector. This is a measurement, not a throughput promise.
 
 ## Prerequisites
 
@@ -89,7 +89,7 @@ Use another terminal for the CLI:
 
 ## Copy/paste showcase workflows
 
-These are **expected HIL verification gates, not observations from completed hardware tests**. Run them only after the safety checklist. Commands for the controller use `.venv/bin/uusb`; commands marked “target” run on the target PC.
+These are copy/paste workflows and their required target observations. The [verification ledger](docs/showcase.md) records which exact subsets were observed on hardware and which gates remain open. Run them only after the safety checklist. Commands for the controller use `.venv/bin/uusb`; commands marked “target” run on the target PC.
 
 ### 1. HID typing, pointer, and media controls
 
@@ -214,7 +214,7 @@ opensc-tool --list-readers
 .venv/bin/uusb token touch
 ```
 
-**Expected target gate:** a standards client can exercise the bounded FIDO CTAP2 surface, PC/SC/OpenSC can exchange supported PIV-like APDUs through one T=1 slot, and the selected test OTP is typed only after explicit controller touch. Use a disposable relying party, test PIN, and test secret. This is not production authentication and no successful target-host interoperability is claimed yet.
+**Observed subset:** direct FIDO HID completed getInfo, test registration, test assertion, and ES256 signature verification; raw CCID completed power-on, PIV SELECT, and CHUID GET DATA; a test HOTP counter advanced only after accepted transfer. Browser/libfido2, automatic PC/SC/OpenSC discovery, full PIV APDUs, and captured OTP keystrokes remain expected target gates. Use only disposable relying parties, PINs, and secrets; this is not production authentication.
 
 The installer navigation example is described in [the showcase guide](docs/showcase.md) and checked in as [`examples/windows-installer.json`](examples/windows-installer.json). It requires a user-supplied, legally prepared raw image; the repository includes no Microsoft media, keys, or unattended-install claim.
 
@@ -231,13 +231,13 @@ The mailbox is reserved at `0x20000000` and is never zeroed by normal startup. M
 
 | Item | Current evidence | Honest boundary |
 |---|---|---|
-| Four 64 KiB firmware profiles | Build configuration and software tests | No target USB enumeration has been observed in this release work |
-| Mailbox, HID state, MSC state, tone, pattern, FIDO/CCID/OTP helpers | Native C and Python tests | Tests do not prove SWD signal integrity, USB timing, OS interoperability, or physical release behavior |
-| USB packet-memory budgets | Compile-time assertions and descriptor tests | Static accounting only; not a hardware trace |
-| HID/MSC throughput | Not measured | SWD-backed MSC is intentionally slow; no latency or throughput promise |
-| Microphone/webcam stability | Not measured on target hardware | Synthetic data only; no sensor ingestion claim |
-| Security-token interoperability | Host software tests only | No certification, production security, or completed libfido2/PCSC target gate |
-| Two-PC topology | Designed and documented | Final two-PC HIL remains pending; same-machine development is a different topology |
+| Four 64 KiB firmware profiles | Build configuration, software tests, and target enumeration | All four PIDs/descriptors enumerated on one Fedora controller/target machine; final two-PC HIL remains open |
+| Mailbox, HID state, MSC state, tone, pattern, FIDO/CCID/OTP helpers | Native C/Python tests plus live ST-Link mailbox traffic | Same-machine HIL does not prove a separated controller/target topology |
+| USB packet-memory budgets | Compile-time assertions and descriptor tests | Static accounting plus successful enumeration; not a USB electrical trace |
+| HID/MSC throughput | Keyboard, mouse, and consumer events captured; read-only and explicit read-write FAT12 workflows passed | One sequential 1.44 MiB read measured 16.6 kB/s and 30.8 ms/sector average; forced daemon loss during a read produced target `EIO` after 135,168 bytes, never false success; physical ST-Link unplug remains open |
+| Microphone/webcam stability | Five-second UAC1 tone/silence recordings and three 120-second UVC streams | Synthetic data only; no sensor-ingestion claim |
+| Security-token interoperability | Direct FIDO HID registration/assertion, raw CCID PIV-like APDUs, and HOTP accepted-transfer state | No certification or production security; browser/libfido2 and automatic PC/SC client gates remain open |
+| Two-PC topology | Designed and documented | Current hardware evidence used the same Fedora machine for ST-Link control and target-facing USB |
 
 ## Troubleshooting
 

@@ -15,6 +15,7 @@ int main(void);
 void Reset_Handler(void);
 void Default_Handler(void);
 void USB_LP_CAN1_RX0_IRQHandler(void);
+void USB_HP_CAN1_TX_IRQHandler(void);
 
 #define UUSB_WEAK_HANDLER(name) \
     void name(void) __attribute__((weak, alias("Default_Handler")))
@@ -47,7 +48,6 @@ UUSB_WEAK_HANDLER(DMA1_Channel5_IRQHandler);
 UUSB_WEAK_HANDLER(DMA1_Channel6_IRQHandler);
 UUSB_WEAK_HANDLER(DMA1_Channel7_IRQHandler);
 UUSB_WEAK_HANDLER(ADC1_2_IRQHandler);
-UUSB_WEAK_HANDLER(USB_HP_CAN1_TX_IRQHandler);
 UUSB_WEAK_HANDLER(CAN1_RX1_IRQHandler);
 UUSB_WEAK_HANDLER(CAN1_SCE_IRQHandler);
 UUSB_WEAK_HANDLER(EXTI9_5_IRQHandler);
@@ -157,6 +157,13 @@ static uusb_vector_table_t const vector_table = {
         USBWakeUp_IRQHandler,
     },
 };
+void USB_HP_CAN1_TX_IRQHandler(void)
+{
+    /* STM32F1 routes isochronous/double-buffer USB events through the
+     * high-priority vector. TinyUSB's F1 DCD owns the same peripheral state
+     * in its low-priority handler, so both vectors must reach it. */
+    USB_LP_CAN1_RX0_IRQHandler();
+}
 
 _Static_assert(
     sizeof(uusb_vector_table_t) == (59U * sizeof(uint32_t)),

@@ -593,7 +593,7 @@ class ControllerDaemon:
                 self.otp.commit_hotp(selected, metadata["counter"])
             typed = True
             self.events.append(
-                "token.otp_typed", name=selected, kind=metadata["kind"]
+                "token.otp_typed", name=selected, token_kind=metadata["kind"]
             )
         self.events.append("token.touch", otp_typed=typed)
         return {"touched": True, "otp_typed": typed}
@@ -621,7 +621,7 @@ class ControllerDaemon:
             )
         else:
             raise ValueError("OTP kind must be 'hotp' or 'totp'")
-        self.events.append("token.otp_provisioned", name=name, kind=kind, digits=digits)
+        self.events.append("token.otp_provisioned", name=name, token_kind=kind, digits=digits)
         return {"provisioned": name, "kind": kind, "digits": digits}
 
     def _scenario(self, method: str, params: dict[str, Any]) -> Any:
@@ -722,9 +722,11 @@ class ControllerDaemon:
             raw = self.engine.transport.read_bytes(
                 MAILBOX_ADDRESS + TOKEN_REQUEST_OFFSET, TOKEN_REQUEST_SIZE
             )
-            request = parse_token_request(raw)
-            if request.sequence == request.acknowledged_sequence:
+            request_sequence = int.from_bytes(raw[0:4], "little")
+            acknowledged_sequence = int.from_bytes(raw[0x210:0x214], "little")
+            if request_sequence == acknowledged_sequence:
                 return
+            request = parse_token_request(raw)
             self.engine.transport.write_words(
                 MAILBOX_ADDRESS + FIELD_OFFSETS["token_request.request_ack"],
                 (request.sequence,),
@@ -799,7 +801,12 @@ def runtime_socket_path() -> Path:
     runtime = os.environ.get("XDG_RUNTIME_DIR")
     if not runtime:
         raise DaemonFault(EXIT_UNAVAILABLE, "XDG_RUNTIME_DIR is not set")
-    root = Path(runtime) / "universal-usb"
+    runtime_root = Path(runtime)
+    runtime_root.mkdir(mode=0o700, exist_ok=True)
+    runtime_info = runtime_root.lstat()
+    if runtime_root.is_symlink() or not runtime_root.is_dir() or runtime_info.st_uid != os.geteuid():
+        raise DaemonFault(EXIT_UNAVAILABLE, "XDG_RUNTIME_DIR is not a private owned directory")
+    root = runtime_root / "universal-usb"
     root.mkdir(mode=0o700, exist_ok=True)
     if root.is_symlink() or not root.is_dir():
         raise DaemonFault(EXIT_UNAVAILABLE, "runtime directory is not a real directory")

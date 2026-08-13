@@ -84,6 +84,7 @@ class LifecycleTests(unittest.TestCase):
             (
                 "openocd", "-l", str(Path("relative.log").absolute()),
                 "-f", "interface/stlink.cfg", "-f", "target/stm32f1x.cfg",
+                "-c", "stm32f1x.cpu configure -work-area-phys 0x20001000 -work-area-size 0x4000",
                 "-c", "gdb_port disabled", "-c", "telnet_port disabled",
                 "-c", "tcl_port pipe", "-c", "init",
             ),
@@ -119,6 +120,10 @@ class LifecycleTests(unittest.TestCase):
             self.assertEqual(
                 argv[-4:],
                 ("-c", f"program {elf.resolve()} verify reset", "-c", "shutdown"),
+            )
+            self.assertIn(
+                "stm32f1x.cpu configure -work-area-phys 0x20001000 -work-area-size 0x4000",
+                argv,
             )
             self.assertEqual(calls[0][1]["timeout"], 30.0)
 

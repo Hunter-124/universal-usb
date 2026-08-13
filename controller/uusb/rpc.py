@@ -68,6 +68,17 @@ def prepare_socket_directory(path: Path, *, uid: int | None = None) -> Path:
     owner = os.geteuid() if uid is None else uid
     directory = path.parent
     try:
+        runtime_info = directory.parent.lstat()
+    except FileNotFoundError:
+        directory.parent.mkdir(mode=0o700, parents=False, exist_ok=False)
+        runtime_info = directory.parent.lstat()
+    except OSError as error:
+        raise RpcPermissionError(f"cannot inspect runtime directory: {error}") from error
+    if not stat.S_ISDIR(runtime_info.st_mode) or stat.S_ISLNK(runtime_info.st_mode):
+        raise RpcPermissionError("runtime directory must be a real directory")
+    if runtime_info.st_uid != owner:
+        raise RpcPermissionError("runtime directory is not owned by the daemon UID")
+    try:
         directory.mkdir(mode=0o700, parents=False, exist_ok=False)
     except FileExistsError:
         pass

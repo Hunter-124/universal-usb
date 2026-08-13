@@ -74,6 +74,7 @@ class OpenOCDTransport:
             "-l", self.log_path,
             "-f", "interface/stlink.cfg",
             "-f", "target/stm32f1x.cfg",
+            "-c", "stm32f1x.cpu configure -work-area-phys 0x20001000 -work-area-size 0x4000",
             "-c", "gdb_port disabled",
             "-c", "telnet_port disabled",
             "-c", "tcl_port pipe",
@@ -188,6 +189,7 @@ class OpenOCDTransport:
                 "-l", self.log_path,
                 "-f", "interface/stlink.cfg",
                 "-f", "target/stm32f1x.cfg",
+                "-c", "stm32f1x.cpu configure -work-area-phys 0x20001000 -work-area-size 0x4000",
                 "-c", f"program {absolute} verify reset",
                 "-c", "shutdown",
             )

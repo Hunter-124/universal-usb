@@ -18,7 +18,7 @@
 #define UUSB_CCID_IN UINT8_C(0x82)
 #define UUSB_CCID_INTERRUPT UINT8_C(0x83)
 #define UUSB_CCID_PACKET_SIZE 64U
-#define UUSB_TOKEN_EXCHANGE_TIMEOUT_MS UINT32_C(1000)
+#define UUSB_TOKEN_EXCHANGE_TIMEOUT_MS UINT32_C(30000)
 #define UUSB_KEEPALIVE_INTERVAL_MS UINT32_C(100)
 #define UUSB_RESET_RELEASE_TIMEOUT_MS UINT32_C(100)
 #define UUSB_COMPILER_BARRIER() __asm__ volatile("" ::: "memory")
@@ -281,6 +281,17 @@ static void perform_reset(void)
 
 static void service_hid_in(void)
 {
+    if (profile.fido_in_flight && tud_hid_n_ready(UUSB_FIDO_INSTANCE)) {
+        profile.fido_in_flight = false;
+        (void)uusb_token_usb_ctaphid_in_accepted(&profile.usb);
+    }
+    if (profile.otp_in_flight && tud_hid_n_ready(UUSB_OTP_INSTANCE)) {
+        profile.otp_in_flight = false;
+        (void)uusb_token_usb_otp_in_accepted(&profile.usb);
+        if (profile.usb.otp_phase == UUSB_TOKEN_USB_OTP_IDLE) {
+            uusb_mailbox_hid_release_complete();
+        }
+    }
     uint8_t report[UUSB_CTAPHID_REPORT_SIZE];
     if (!profile.fido_in_flight && tud_hid_n_ready(UUSB_FIDO_INSTANCE) &&
         uusb_token_usb_ctaphid_in_peek(&profile.usb, report) &&
@@ -397,13 +408,11 @@ void tud_hid_report_complete_cb(
     uint8_t instance, const uint8_t *report, uint16_t length)
 {
     (void)report;
-    if (instance == UUSB_FIDO_INSTANCE &&
-        length == UUSB_CTAPHID_REPORT_SIZE && profile.fido_in_flight) {
+    (void)length;
+    if (instance == UUSB_FIDO_INSTANCE && profile.fido_in_flight) {
         profile.fido_in_flight = false;
         (void)uusb_token_usb_ctaphid_in_accepted(&profile.usb);
-    } else if (instance == UUSB_OTP_INSTANCE &&
-               length == UUSB_TOKEN_USB_OTP_REPORT_SIZE &&
-               profile.otp_in_flight) {
+    } else if (instance == UUSB_OTP_INSTANCE && profile.otp_in_flight) {
         profile.otp_in_flight = false;
         (void)uusb_token_usb_otp_in_accepted(&profile.usb);
         if (profile.usb.otp_phase == UUSB_TOKEN_USB_OTP_IDLE) {

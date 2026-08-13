@@ -1,6 +1,6 @@
 # Showcase and verification ledger
 
-This guide separates reproducible commands, expected target observations, software evidence, and hardware evidence. No physical USB/SWD run, two-PC interoperability run, Windows installation, microphone recording, webcam stream, FIDO client transaction, or PC/SC transaction was observed while this documentation was prepared.
+This guide separates reproducible commands, expected target observations, software evidence, and hardware evidence. On 2026-08-13, one Fedora machine supplied both ST-Link control and target-facing USB for a controlled development HIL run. That run is evidence only for the exact results below; it is not the final separated two-PC topology and did not exercise a Windows installer.
 
 > Complete [the power-off continuity checklist](continuity-checklist.md) before any command that opens ST-Link or connects target USB. The target PC is the only VBUS source; contacts 5/6/8/9 remain unconnected and contact 7 is never GPIO.
 
@@ -10,23 +10,23 @@ This guide separates reproducible commands, expected target observations, softwa
 - **Expected HIL gate:** the observation required from real controller/STM32/target hardware before a claim can be promoted.
 - **Not measured:** no number or success result exists; the document does not substitute a model, estimate, or CI result.
 
-The pre-documentation software baseline reported four firmware builds, 109 controller tests, and 6 native C tests passing. CI repeats the repository's software checks. Counts may grow; neither count is hardware evidence.
+The verified software baseline builds four firmware images and passes 111 controller tests plus 7 native C tests. CI repeats these software checks; the hardware evidence below comes from separate physical runs.
 
 ## Results and limitations
 
 | Capability | Software evidence | Physical result | Release wording |
 |---|---|---|---|
-| Four profile images within 64 KiB flash / 20 KiB SRAM | Build/link size gates | **Not yet verified on hardware** | Buildable personalities, not proven enumeration |
-| Fixed mailbox/control/block/token layouts | C/Python offset, CRC, golden-vector, sequence, and parser tests | **Not yet verified over a real ST-Link session** | ABI is software-verified |
-| HID state/release and mouse splitting | Native and controller state tests | **Not yet verified as accepted target IN transfers** | Expected behavior only |
-| FAT12 image builder and MSC backing | Deterministic tool and media-state tests | **Latency/throughput/integrity not measured on hardware** | SWD MSC is intentionally slow and unmeasured |
-| UAC1 tone/silence | Descriptor and tone-helper tests | **No target recording yet** | Synthetic source; no sensor claim |
-| UVC patterns | Descriptor and pattern-helper tests | **No target stream or long-run result yet** | Synthetic patterns; no camera claim |
-| FIDO/CCID/OTP | Framing, CTAP2, CCID/APDU, RFC vectors, state/durability tests | **No libfido2, browser, PC/SC, or target enumeration result yet** | Host-backed test device; no security/certification claim |
-| Controlled D+ disconnect/profile verification | Lifecycle and profile-state tests | **No board-specific re-enumeration result yet** | Pulse alone is not proof; manual/hardware remedy may be required |
-| Two-PC topology | Architecture review | **Not yet exercised end to end** | Final HIL gate remains open |
+| Four profile images within 64 KiB flash / 20 KiB SRAM | Build/link size gates | All four private PIDs and profile-specific descriptors enumerated on Fedora | Verified on the same-machine development topology |
+| Fixed mailbox/control/block/token layouts | C/Python offset, CRC, golden-vector, sequence, and parser tests | Live ST-Link command, heartbeat, flash, profile, block, and token exchanges succeeded | Verified on one board/probe; not a signal-integrity characterization |
+| HID state/release and mouse splitting | Native and controller state tests | Fedora libinput captured modifier press/release, relative `+1/-1` pointer motion, and consumer Stop press/release; forced daemon loss cleared release-pending state | Full key/button/consumer matrix, boot protocol, and suspend/resume remain open |
+| FAT12 image builder and MSC backing | Deterministic tool and media-state tests | Read-only image mounted/read; explicit read-write attach persisted a target-created file; 1,474,560-byte sequential read took 88.6992 s; forced daemon loss caused target `EIO` after 135,168 bytes | 16.6 kB/s and 30.8 ms/sector average on this run only; physical ST-Link unplug remains open |
+| UAC1 tone/silence | Descriptor and tone-helper tests | Five-second mono S16_LE/48 kHz recording measured 1000.00 Hz, peak 8191; silence maximum was 0 | Synthetic source; no sensor claim |
+| UVC patterns | Descriptor and pattern-helper tests | Coherent 128×96 frames captured; bars/checker/gradient each streamed for 120 seconds without ffmpeg transfer errors | Synthetic patterns; no camera claim |
+| FIDO/CCID/OTP | Framing, CTAP2, CCID/APDU, RFC vectors, state/durability tests | Direct FIDO HID getInfo/makeCredential/getAssertion with verified ES256 signature; raw CCID power/SELECT/CHUID; HOTP counter advanced after accepted transfer | Browser/libfido2 and automatic pcscd/OpenSC discovery remain open; no security/certification claim |
+| Controlled D+ disconnect/profile verification | Lifecycle and profile-state tests | Ten consecutive profile switches verified fresh mounted transitions and expected profiles | One Blue Pill board only |
+| Two-PC topology | Architecture review | Not exercised; development HIL used one Fedora machine for both roles | Final separated HIL gate remains open |
 
-The only measured/static resource values published are binary limits, descriptor values, and compile-time PMA totals. There is no throughput, latency, frame-loss, audio-quality, or reliability measurement to report.
+No USB electrical measurements, long-run audio statistics, browser transaction, automatic PC/SC discovery, Windows-install result, or two-PC result is claimed. The MSC number above is one measured run, not a performance promise.
 
 ## Preparation
 
@@ -67,7 +67,7 @@ Expected HIL gate:
 4. A daemon disconnect with a usage held produces accepted zero reports within the heartbeat-loss boundary. Reset and suspend/resume make zero reports the first transfers after remount/resume.
 5. Boot and report mouse protocols both work; wheel is suppressed in boot protocol.
 
-No such target observation is recorded yet.
+Observed subset: `1209:000d` enumerated the exact four interfaces/endpoints; Fedora libinput captured a modifier press/release, `+1/-1` relative pointer motion, and consumer Stop press/release. Forced daemon heartbeat loss cleared release-pending state. The full key/button/consumer matrix, boot protocol, and suspend/resume remain open.
 
 ## Workflow 2: deterministic FAT12 image
 
@@ -102,7 +102,7 @@ Expected HIL gate:
 4. Pulling ST-Link during a read yields failed I/O or medium-not-present, never a successful fabricated sector.
 5. Record sector latency and throughput from the actual hardware before publishing any performance number.
 
-No target read/write or performance measurement is recorded yet.
+Observed: the default read-only 1.44 MiB FAT12 image mounted with label `UUSBDEMO` and yielded the exact marker text. An explicit read-write attach persisted a target-created file after sync/unmount/detach. A sequential 1,474,560-byte target read took 88.6992 seconds (16.6 kB/s; 30.8 ms per sector average). Forced daemon loss during a separate read yielded target `Input/output error` after 135,168 bytes rather than false sector success. A physical ST-Link unplug remains open; this single performance measurement is not a promise.
 
 ## Workflow 3: UAC1 generated tone
 
@@ -145,7 +145,7 @@ Expected HIL gate:
 3. A separate silence capture contains near-zero samples.
 4. Firmware packet/underrun counters remain credible during capture.
 
-No physical recording has been made. “Microphone” names a USB class function; the data is generated and no sensor is present.
+Observed: Fedora ALSA accepted mono S16_LE at 48 kHz; a five-second capture analyzed at 1000.00 Hz with peak 8191, and a separate silence capture had maximum absolute sample 0. “Microphone” names a generated USB class function; no sensor is present.
 
 ## Workflow 4: UVC generated patterns
 
@@ -181,7 +181,7 @@ Expected HIL gate:
 2. Bars, checker, and gradient are visually distinct and the embedded frame counter advances.
 3. Each pattern streams for the required long-run test without malformed transfers or unstable counters.
 
-No stream has been observed. The function has no image sensor, upload path, MJPEG encoder, audio, or full-frame allocation.
+Observed: coherent moving 128×96 frames were captured, and bars, checker, and gradient each streamed through ffmpeg for 120 seconds without transfer errors. The function has no image sensor, upload path, MJPEG encoder, audio, or full-frame allocation.
 
 ## Workflow 5: profile switch and descriptor separation
 
@@ -215,7 +215,7 @@ Expected HIL gate:
 - each reported success includes fresh boot, observed unmounted state, mounted state, and advancing uptime;
 - ten complete switch cycles re-enumerate without stale descriptors.
 
-This gate is not complete. Distinct PIDs reduce descriptor-cache ambiguity but do not prove physical re-enumeration.
+Observed: ten consecutive profile switches verified fresh mounted transitions and expected mailbox profile IDs; target descriptors/PIDs changed across all four personalities without stale descriptors.
 
 ## Workflow 6: host-backed token interoperability
 
@@ -268,7 +268,7 @@ Expected HIL gate:
 4. TOTP/HOTP vectors match RFC 6236/4226 tests. On target hardware, OTP types only after touch, always releases keys, and commits HOTP only after an accepted transfer.
 5. Controller loss, timeout, stale sequence, and bad CRC become failures rather than fabricated FIDO/CCID success.
 
-None of these target-host interoperability results is claimed complete.
+Observed subset: generic descriptors enumerated; direct FIDO HID completed getInfo, makeCredential, and getAssertion with an OpenSSL-verified ES256 signature; raw CCID completed power-on, PIV SELECT, and CHUID GET DATA; a test HOTP counter advanced only after accepted transfer. Browser/libfido2, automatic pcscd/OpenSC discovery, full PIV subset, and captured OTP keystrokes remain open.
 
 ## Prepared installer navigation scenario
 
