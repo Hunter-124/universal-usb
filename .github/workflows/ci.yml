@@ -29,7 +29,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+            cmake ninja-build clang-tidy gcc-arm-none-eabi libnewlib-arm-none-eabi
 
       - name: Verify pinned pristine TinyUSB and patch
         run: python3 tools/verify-tinyusb.py
@@ -42,6 +42,14 @@ jobs:
 
       - name: Build all firmware profiles
         run: cmake --build build/firmware
+
+      - name: Analyze project-owned firmware sources
+        run: |
+          run-clang-tidy -p build/firmware -j 0 \
+            -source-filter='.*[/\\]firmware[/\\](common|platform|profiles|tests)[/\\]' \
+            -extra-arg-before=--target=arm-none-eabi \
+            -extra-arg-before=--gcc-toolchain=/usr \
+            -extra-arg=-Wno-multilib-not-found
 
       - name: Require every firmware artifact
         run: |

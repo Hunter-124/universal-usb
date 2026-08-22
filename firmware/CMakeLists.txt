@@ -39,6 +39,7 @@ set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/arm-none-eabi-gcc.cmak
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/arm-none-eabi-gcc.cmake")
 
 project(universal_usb_firmware VERSION 0.1.0 LANGUAGES C)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(CTest)
 
 if(NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
