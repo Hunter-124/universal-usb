@@ -46,10 +46,10 @@ jobs:
       - name: Analyze project-owned firmware sources
         run: |
           run-clang-tidy -p build/firmware -j 0 \
-            -source-filter='.*[/\\]firmware[/\\](common|platform|profiles|tests)[/\\]' \
             -extra-arg-before=--target=arm-none-eabi \
             -extra-arg-before=--gcc-toolchain=/usr \
-            -extra-arg=-Wno-multilib-not-found
+            -extra-arg=-Wno-multilib-not-found \
+            '.*[/\\]firmware[/\\](common|platform|profiles|tests)[/\\]'
 
       - name: Require every firmware artifact
         run: |
