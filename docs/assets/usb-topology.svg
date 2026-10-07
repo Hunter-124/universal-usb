@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="240" viewBox="0 0 1000 240" role="img" aria-labelledby="title description">
+  <title id="title">Universal USB: controller, debug probe, device, and target</title>
+  <desc id="description">A Linux controller running uusb CLI and uusbd controls an ST-Link probe. The probe communicates over SWD with an STM32F103 with a 4 KiB mailbox and one active USB profile. The device connects over USB 2.0 full-speed to a separate target PC, the only VBUS source. ST-Link supplies no power.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="16" y="58" width="196" height="124" rx="10"/>
+    <rect x="284" y="58" width="168" height="124" rx="10"/>
+    <rect x="512" y="58" width="196" height="124" rx="10"/>
+    <rect x="812" y="58" width="172" height="124" rx="10"/>
+    <path d="M 214 120 H 278" marker-end="url(#arrow)"/>
+    <path d="M 454 120 H 506" marker-end="url(#arrow)"/>
+    <path d="M 710 120 H 806" marker-end="url(#arrow)"/>
+  </g>
+  <g fill="currentColor" font-family="Arial, Helvetica, sans-serif" text-anchor="middle">
+    <g font-size="20" font-weight="600">
+      <text x="114" y="91">Linux controller</text>
+      <text x="368" y="91">ST-Link</text>
+      <text x="610" y="91">STM32F103</text>
+      <text x="898" y="91">Target PC</text>
+    </g>
+    <g font-size="18">
+      <text x="114" y="124">uusb CLI + uusbd</text>
+      <text x="368" y="124">Debug probe</text>
+      <text x="610" y="124">4 KiB mailbox</text>
+      <text x="898" y="124">Separate USB host</text>
+    </g>
+    <g font-size="16">
+      <text x="114" y="157">Images + test state</text>
+      <text x="368" y="157">No power output</text>
+      <text x="610" y="157">One active profile</text>
+      <text x="898" y="157">Only VBUS source</text>
+      <text x="246" y="106">Control</text>
+      <text x="480" y="106">SWD</text>
+      <text x="760" y="106">USB 2.0 FS</text>
+      <text x="500" y="218">Designed two-PC topology · architecture diagram, not a hardware capture</text>
+    </g>
+  </g>
+</svg>

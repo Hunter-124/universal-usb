@@ -11,12 +11,7 @@ The security-token profile is a **host-backed synthetic interoperability device,
 
 ## Topology
 
-```mermaid
-flowchart LR
-    Controller["Linux controller<br/>uusb CLI + uusbd"] -->|"SWD"| Probe["ST-Link<br/>No power output"]
-    Probe --> STM32["STM32F103<br/>4 KiB mailbox<br/>One of four profiles"]
-    STM32 -->|"USB 2.0 FS"| Target["Separate target PC<br/>Only VBUS source"]
-```
+[![Universal USB topology: Linux controller running uusb and uusbd, ST-Link with no power output, STM32F103 with one active profile, and a separate target PC as the only VBUS source](docs/assets/usb-topology.png)](docs/assets/usb-topology.svg)
 
 This is the **designed two-PC topology**, not a verified two-PC hardware result. Standard-A contacts 5/6/8/9 remain unconnected; contact 7 is shield/drain only under a verified design. ST-Link must never supply board power.
 
