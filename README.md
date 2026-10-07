@@ -12,17 +12,18 @@ The security-token profile is a **host-backed synthetic interoperability device,
 ## Topology
 
 ```mermaid
-flowchart TB
-    subgraph Controller["Linux controller PC"]
-        direction LR
-        CLI["uusb CLI"] -->|"Private Unix socket"| Daemon["uusbd daemon<br/>Sole OpenOCD owner<br/>Images and test credentials"]
-    end
-    Daemon --> Probe["ST-Link / SWD<br/>Sense-only VTref<br/>No debug power output"]
-    Probe -->|"SWDIO / SWCLK / GND / NRST"| STM32["STM32F103 Blue Pill<br/>4 KiB SRAM mailbox<br/>One of four firmware personalities:<br/>hid-msc — HID + storage<br/>microphone — generated tone/silence<br/>webcam — generated test patterns<br/>security-token — FIDO / CCID / OTP"]
-    STM32 -->|"USB 2.0 full-speed · PA11 D− / PA12 D+"| Target["Separate target PC<br/>USB host<br/>Only VBUS source"]
+flowchart LR
+    Controller["Linux controller<br/>uusb CLI + uusbd"] -->|"SWD"| Probe["ST-Link<br/>No power output"]
+    Probe --> STM32["STM32F103<br/>4 KiB mailbox<br/>One of four profiles"]
+    STM32 -->|"USB 2.0 FS"| Target["Separate target PC<br/>Only VBUS source"]
 ```
 
 This is the **designed two-PC topology**, not a verified two-PC hardware result. Standard-A contacts 5/6/8/9 remain unconnected; contact 7 is shield/drain only under a verified design. ST-Link must never supply board power.
+
+`uusb` talks to `uusbd` over a private Unix socket; the daemon alone owns OpenOCD,
+images, and test credentials. SWD uses SWDIO/SWCLK/GND/NRST with sense-only VTref;
+target-facing USB uses PA11 D− and PA12 D+. The four mutually exclusive firmware
+profiles are detailed below.
 
 > [!NOTE]
 > **Verification boundary:** the [hardware verification ledger](docs/showcase.md) records one development hardware-in-the-loop (HIL) run using the **same Fedora machine for both roles**. Its observed USB/SWD results do not establish separate two-PC interoperability, which remains unverified. Audio and video are generated test data; the token is synthetic and must not protect real accounts or keys.
