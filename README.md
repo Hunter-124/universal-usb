@@ -1,6 +1,6 @@
 # Universal USB
 
-Universal USB is a proof of concept in which a Linux controller PC drives an STM32F103C8T6 over ST-Link/SWD while the STM32 appears to a separate target PC as one of four USB 2.0 full-speed test devices. The original “USB hub” idea is implemented as standards-correct composite interfaces: this project does not emulate a hub.
+Universal USB is an embedded-systems proof of concept for testing USB device interoperability. A Linux CLI and daemon control an STM32F103C8T6 through ST-Link/SWD, letting it act as a keyboard/storage device, synthetic microphone, synthetic webcam, or test-only security token. One firmware personality runs at a time; composite interfaces are used where needed, **not an emulated USB hub**.
 
 > [!DANGER]
 > **Do not connect or power the hardware until every contact has been continuity-mapped with all equipment powered off.** PA11/package pin 32 is USB D− and PA12/package pin 33 is USB D+. The target PC must be the only VBUS source. Never join an ST-Link power-output pin or another PC's 5 V/3.3 V rail. Standard-A SuperSpeed contacts 5, 6, 8, and 9 are unused and must not reach STM32 GPIO; contact 7 is shield/drain only under a verified design. Disconnect PB4–PB8 from contacts 5–9, verify the D+ pull-up is approximately 1.5 kΩ to 3.3 V, and verify PC ground potential or use an isolated debug link. Read [the hardware contract](docs/hardware.md) and sign [the continuity checklist](docs/continuity-checklist.md) first.
@@ -11,18 +11,21 @@ The security-token profile is a **host-backed synthetic interoperability device,
 
 ## Topology
 
-```text
- Linux controller PC                    STM32F103 Blue Pill                  target PC
- ┌──────────────────┐   ST-Link/SWD    ┌────────────────────┐   USB 2.0 FS  ┌───────────┐
- │ uusbd (sole owner)├─────────────────►│ 4 KiB SRAM mailbox │              │           │
- │ uusb CLI          │ SWDIO/SWCLK/GND │                    │ PA11 D− ─────►│ USB host  │
- │ images/credentials│ NRST + VTref     │ one flashed profile│ PA12 D+ ─────►│           │
- └──────────────────┘ (no power output)└────────────────────┘ GND ─────────►└───────────┘
-                                                                          sole VBUS source
-
- Standard-A contacts 5/6/8/9: unconnected. Contact 7: verified shield/drain only.
- The controller and target are separate roles; same-machine development is not the final HIL topology.
+```mermaid
+flowchart TB
+    subgraph Controller["Linux controller PC"]
+        direction LR
+        CLI["uusb CLI"] -->|"Private Unix socket"| Daemon["uusbd daemon<br/>Sole OpenOCD owner<br/>Images and test credentials"]
+    end
+    Daemon --> Probe["ST-Link / SWD<br/>Sense-only VTref<br/>No debug power output"]
+    Probe -->|"SWDIO / SWCLK / GND / NRST"| STM32["STM32F103 Blue Pill<br/>4 KiB SRAM mailbox<br/>One of four firmware personalities:<br/>hid-msc — HID + storage<br/>microphone — generated tone/silence<br/>webcam — generated test patterns<br/>security-token — FIDO / CCID / OTP"]
+    STM32 -->|"USB 2.0 full-speed · PA11 D− / PA12 D+"| Target["Separate target PC<br/>USB host<br/>Only VBUS source"]
 ```
+
+This is the **designed two-PC topology**, not a verified two-PC hardware result. Standard-A contacts 5/6/8/9 remain unconnected; contact 7 is shield/drain only under a verified design. ST-Link must never supply board power.
+
+> [!NOTE]
+> **Verification boundary:** the [hardware verification ledger](docs/showcase.md) records one development hardware-in-the-loop (HIL) run using the **same Fedora machine for both roles**. Its observed USB/SWD results do not establish separate two-PC interoperability, which remains unverified. Audio and video are generated test data; the token is synthetic and must not protect real accounts or keys.
 
 ## Capability matrix
 
@@ -116,7 +119,7 @@ tools/make-demo-image.sh /tmp/uusb-demo.img
 .venv/bin/uusb msc detach
 ```
 
-**Expected target gate:** a 1.44 MiB FAT12 volume labelled `UUSBDEMO` becomes readable and contains `UUSB.TXT`. The default attach is read-only. Remote storage over SWD is intentionally slow and remains unmeasured; a controller failure must become failed I/O or medium-absent, never a successful zero-filled sector.
+**Expected target gate:** a 1.44 MiB FAT12 volume labelled `UUSBDEMO` becomes readable and contains `UUSB.TXT`. The default attach is read-only. Remote storage over SWD is intentionally slow; the capability matrix reports a measurement from one same-machine HIL run, not a two-PC result or performance promise. A controller failure must become failed I/O or medium-absent, never a successful zero-filled sector.
 
 ### 3. Select and record the generated microphone tone
 
